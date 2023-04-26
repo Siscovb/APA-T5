@@ -107,7 +107,7 @@ con una señal monofónica. El tipo concreto de señal que se almacenará en `fi
 
 - `canal=0`: Se almacena el canal izquierdo $L$.
 - `canal=1`: Se almacena el canal derecho $R$.
-- `canal=2`: Se almacena la semisuma $(L+R)/2$$. Es la opción por defecto.
+- `canal=2`: Se almacena la semisuma $(L+R)/2$. Es la opción por defecto.
 - `canal=3`: Se almacena la semidiferencia $(L-R)/2$.
 
 #### Función `mono2estereo(ficIzq, ficDer, ficEste)`
