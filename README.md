@@ -1,6 +1,6 @@
 # Sonido estéreo y ficheros WAVE
 
-## Nom i cognoms
+## Nom i cognoms: Joan Marc Fuentes Soler 
 
 ## El formato WAVE
 
