@@ -184,16 +184,104 @@ innecesariamente la canción.
 
 Inserte a continuación el código de los métodos desarrollados en esta tarea, usando los comandos necesarios
 para que se realice el realce sintáctico en Python del mismo (no vale insertar una imagen o una captura de
-pantalla, debe hacerse en formato *markdown*).
+pantalla, debe hacerse en formato *markdown*). 
+<br>
+<br>
 
-##### Código de `estereo2mono()`
+#### Código de `estereo2mono()`
+Convierte un archivo de audio estéreo en un archivo de audio mono.
+La función toma tres argumentos: "ficEste" es el nombre del archivo de entrada estéreo,
+"ficMono" es el nombre del archivo de salida mono y "canal"
+especifica qué canal de audio se debe utilizar para crear el archivo mono.
 
-##### Código de `mono2estereo()`
+```python
+def estereo2mono(ficEste, ficMono, canal=2):
+    """
 
-##### Código de `codEstereo()`
+    """
+    numChannels, sampleRate, bitPerSample, data = readWave(ficEste)
+    data += (0, )
+    if canal == 0:
+        writeWave(ficMono, numChannels=1, sampleRate=sampleRate,
+                 bitsPerSample=bitPerSample, data=data[::2])
+    elif canal == 1:
+        writeWave(ficMono, numChannels=1, sampleRate=sampleRate,
+                 bitsPerSample=bitPerSample, data=data[1::2])
+    elif canal == 2:
+        dataLR = ((dataL + dataR) // 2
+                  for dataL, dataR in zip(data[::2], data[1::2]))
+        writeWave(ficMono, numChannels=1, sampleRate=sampleRate,
+                 bitsPerSample=bitPerSample, data=list(dataLR))
+    elif canal == 3:
+        dataLR = ((dataL - dataR) // 2
+                  for dataL, dataR in zip(data[::2], data[1::2]))
+        writeWave(ficMono, numChannels=1, sampleRate=sampleRate,
+                 bitsPerSample=bitPerSample, data=list(dataLR))
+```
+<br> <br>
 
-##### Código de `decEstereo()`
+#### Código de `mono2estereo()`
+Recibe como entrada los nombres de dos archivos de audio en formato WAVE
+para canales izquierdo y derecho, y el nombre del archivo de salida
+en el que se desea guardar el archivo estéreo resultante.
 
+Primero, se lee la información de ambos archivos de audio usando la función readWave.
+Luego, los datos de ambos canales se combinan en una lista data alternando una
+muestra de cada canal, de modo que se convierten dos canales mono en un canal estéreo.
+Por último, se escribe la información combinada en un archivo WAVE estéreo
+usando la función writeWave.
+
+```python
+def mono2estereo(ficIzq, ficDer, ficEste):
+
+    numCanalesLeft, sampleRateL, bitPerSampleL, dataL = readWave(ficIzq)
+    numCanalesRight, sampleRateR, bitPerSampleR, dataR = readWave(ficDer)
+    data = [data for pair in zip(dataL, dataR) for data in pair]
+
+    writeWave(ficEste, numChannels=2, sampleRate=sampleRateL,
+             bitsPerSample=bitPerSampleL, data=data)
+```
+<br> <br>
+
+#### Código de `codEstereo()`
+Recibe dos nombres de archivo, el primero corresponde a un archivo de audio en
+formato estéreo que será codificado y el segundo corresponde al
+nombre del archivo en el que se guardará el resultado del proceso de codificación.
+En primer lugar, se lee el archivo de audio estéreo utilizando la función readWave(),
+que devuelve cuatro valores: el número de canales, la tasa de muestreo, la profundidad
+de bits y los datos de audio. Luego, se calcula la suma y la diferencia de los datos de audio correspondientes a los canales izquierdo y derecho, utilizando comprensión de listas y la operación aritmética correspondiente. A continuación, se combinan los datos de suma y diferencia en un solo arreglo, intercalando los valores correspondientes. Estos datos se pasan a la función cod_2en1(), que codifica cada par de valores como un solo número entero de 32 bits mediante la función cod_2en1(). Finalmente, los datos codificados se escriben en un archivo de audio utilizando la función writeWave(), con el número de canales igual a 1, la profundidad de bits igual a 32 y los datos de audio codificados.
+```python
+def codEstereo(ficEste, ficCod):
+    numChannels, sampleRate, bitPerSample, data = readWave(ficEste)
+    dataSuma = [(dataL + dataR) // 2
+                for dataL, dataR in zip(data[::2], data[1::2])]
+    dataDif = [(dataL - dataR) // 2
+               for dataL, dataR in zip(data[::2], data[1::2])]
+    dataCod = [data for pair in zip(dataSuma, dataDif) for data in pair]
+    estructura = [cod_2en1(datasum, datadif, numBits=16)
+                  for datasum, datadif in zip(dataCod[::2], dataCod[1::2])]
+    writeWave(ficCod, numChannels=1, sampleRate=sampleRate,
+             bitsPerSample=32, data=estructura)
+```
+<br> <br>
+
+#### Código de `decEstereo()`
+Decodifica un archivo de audio estéreo codificado mediante el método de codificación
+estéreo para obtener una señal estéreo con los dos canales separados.
+```python
+def decEstereo(ficCod, ficEste):
+    numChannels, sampleRate, bitPerSample, data = readWave(ficCod)
+    dataL, dataR = [], []
+    for var in data:
+        dataSum, dataDif = dec_2en1(var, numBits=16)
+        L = dataSum + dataDif
+        R = (dataSum * 2) - L
+        dataL.append(L), dataR.append(R)
+    dataTot = [data for pair in zip(dataL, dataR) for data in pair]
+    writeWave(ficEste, numChannels=2, sampleRate=sampleRate,
+             bitsPerSample=16, data=dataTot)
+```
+<br> <br>
 #### Subida del resultado al repositorio GitHub y *pull-request*
 
 La entrega se formalizará mediante *pull request* al repositorio de la tarea.
