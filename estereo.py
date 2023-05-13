@@ -128,8 +128,8 @@ def codEstereo(ficEste, ficCod):
         buffer = ficEn.read(st.calcsize(cabecera))
         subChunk2IDin, subChunk2Sizein = st.unpack(cabecera, buffer)
 
-        numMuestrasin = 2 * subChunk2Sizein // blockAlignin
-        datos = f'<{numMuestrasin}B' 
+        numMuestrasin =  subChunk2Sizein // blockAlignin
+        datos = f'<{numMuestrasin}h' 
         buffer = ficEn.read(st.calcsize(datos))
         Datos = st.unpack(datos, buffer)
     print('Longitud datos=')
@@ -139,16 +139,10 @@ def codEstereo(ficEste, ficCod):
     #DatosR=Datos[1::2]
     #print('Longitud datos l=')
     #print(len(DatosL))
-    #print('Longitud datosr=')
-    #print(len(DatosR))
-    #semisuma= [(dl+dr)//2 for  dl,dr in zip(DatosL,DatosR)]
-    #semiresta= [(dl-dr)//2 for dl,dr in zip(DatosL,DatosR)]
-
-    #print('Longitud semisuma=')
-    #print(len(semisuma))
+    
     bitesout = bytearray()
-    for i in range(len(Datos)-4):
-        bitesout.extend(st.pack('BBBB', (int(Datos[i])+int(Datos[i+3]))//2, (int(Datos[i+1])+int(Datos[i+4]))//2, (int(Datos[i])-int(Datos[i+3]))//2, (int(Datos[i+1])-int(Datos[i+4]))//2))
+    for i in range(len(Datos)-1):
+        bitesout.extend(st.pack('<hh', (int(Datos[i])+int(Datos[i+1]))//2, (int(Datos[i])-int(Datos[i+1]))//2))
     print('Longitud salida=')
     print(len(bitesout))
 
@@ -157,8 +151,8 @@ def codEstereo(ficEste, ficCod):
     bitsPerSampleC = 32
     subChunk1SizeC = 16
     sampleRateC = 16000
-    numChannelsC = 2
-    subChunk2sizeC = (numeroMuestras * 2 * (bitsPerSampleC//8))
+    numChannelsC = 1
+    subChunk2sizeC = (numeroMuestras * numChannelsC * (bitsPerSampleC//8))
     chunkSizeC = 4 + (8 + subChunk1SizeC) + (8 + subChunk2sizeC)
     byteRateC = sampleRateC * numChannelsC * bitsPerSampleC//8
     blockAlignC = numChannelsC * bitsPerSampleC//8
