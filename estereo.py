@@ -96,19 +96,14 @@ def estereo2mono(ficEste, ficMono, canal=2):
     
 def mono2estereo(ficIzq, ficDer, ficEste):
     """
-    Lee los ficheros ficIzq y ficDer, que contienen las señales monofónicas correspondientes a los canales izquierdo y derecho, 
-    respectivamente, y construye con ellas una señal estéreo que almacena en el fichero ficEste.
-    
+    Combina dos ficheros de audio mono en uno estéreo.
     """
-    datos_izq = abrewave(ficIzq)[-1]  # Leer datos del canal izquierdo
-    datos_der = abrewave(ficDer)[-1]  # Leer datos del canal derecho
-    
-    if len(datos_izq) != len(datos_der):
-        raise ValueError("Las señales monofónicas deben tener la misma duración")
-    
-    datos_estereo = [(izq, der) for izq, der in zip(datos_izq, datos_der)]  # Combinar muestras de ambos canales
-    
-    WriteWave(ficEste, numchannels=2, samplerate=44100, bitspersample=16, data=datos_estereo)  # Escribir datos de señal estéreo en un archivo
+    # Leer las señales mono del canal izquierdo y derecho
+    _, samplerate, bitspersample, data_izq = abrewave(ficIzq)
+    _, _, _, data_der = abrewave(ficDer)
 
+    # Combinar las señales mono en una señal estéreo
+    data_est = list(zip(data_izq, data_der))
 
-
+    # Escribir la señal estéreo en un archivo WAV
+    WriteWave(ficEste, numchannels=2, samplerate=samplerate, bitspersample=bitspersample, data=data_est)
