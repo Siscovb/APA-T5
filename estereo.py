@@ -98,12 +98,32 @@ def mono2estereo(ficIzq, ficDer, ficEste):
     """
     Combina dos ficheros de audio mono en uno estéreo.
     """
-    # Leer las señales mono del canal izquierdo y derecho
     _, samplerate, bitspersample, data_izq = abrewave(ficIzq)
     _, _, _, data_der = abrewave(ficDer)
 
     # Combinar las señales mono en una señal estéreo
     data_est = list(zip(data_izq, data_der))
 
-    # Escribir la señal estéreo en un archivo WAV
     WriteWave(ficEste, numchannels=2, samplerate=samplerate, bitspersample=bitspersample, data=data_est)
+
+def codEstereo(ficEste, ficCod):
+    """
+    Lee el fichero `ficEste`, que contiene una señal estéreo codificada con PCM lineal de 16 bits,
+    y construye con ellas una señal codificada con 32 bits que permita su reproducción tanto por sistemas 
+    monofónicos como por sistemas estéreo preparados para ello.
+
+    """
+    # Lectura
+    _, samplerate, _, data = abrewave(ficEste)
+    
+    datosCod = []
+    
+    for i in range(0, len(data), 2):         # Itera a través de los datos de audio estéreo, de dos en dos
+        dataL = data[i]                         # canal esquerra
+        dataR = data[i + 1]                     # canal dret
+        dataSUMA = (dataL + dataR) // 2            # semisuma
+        dataDIF = (dataL - dataR) // 2           # semidif
+        datosCod.append(dataSUMA)
+        datosCod.append(dataDIF)
+    
+    WriteWave(ficCod, numChannels=1, SampleRate=samplerate, BitsPerSample=32, data=datosCod)
