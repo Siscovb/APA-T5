@@ -32,7 +32,7 @@ def abreWave(fichero):
 
         return (chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
         numChannels, sampleRate, byteRate,
-        blockAlign, BitsxSample, subChunk2ID, subChunk2Size, Datos)
+        blockAlign, BitsxSample, subChunk2ID, subChunk2Size)
 
     
 
