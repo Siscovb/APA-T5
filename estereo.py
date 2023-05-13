@@ -187,7 +187,7 @@ def codEstereo(ficEste, ficCod):
 
 def decEstereo(ficCod, ficEste):
     """
-    decodifica un archivo de audio estéreo codificado mediante el método de codificación
+    Decodifica un archivo de audio estéreo codificado mediante el método de codificación
     estéreo para obtener una señal estéreo con los dos canales separados.
     """
     numChannels, sampleRate, bitPerSample, data = readWave(ficCod)
