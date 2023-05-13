@@ -157,3 +157,5 @@ def decEstereo(ficCod, ficDec):
         DatosDec.append(R)
     
     WriteWave(ficDec, numChannels=2, sampleRate=samplerate, bitsPerSample=bitspersample, data=DatosDec)
+
+
