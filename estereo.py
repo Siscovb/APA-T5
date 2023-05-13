@@ -127,3 +127,33 @@ def codEstereo(ficEste, ficCod):
         datosCod.append(dataDIF)
     
     WriteWave(ficCod, numChannels=1, SampleRate=samplerate, BitsPerSample=32, data=datosCod)
+
+def decEstereo(ficCod, ficDec):
+    """
+    Lee el fichero \python{ficCod} con una señal monofónica de 32 bits en la que los 16 bits más significativos
+    contienen la semisuma de los dos canales de una señal estéreo y los 16 bits menos significativos la semidiferencia,
+    y escribe el fichero \python{ficEste} con los dos canales por separado en el formato de los ficheros WAVE estéreo.
+    """
+    # Lectura
+    numchannels, samplerate, bitspersample, data = abrewave(ficCod)
+    
+    # Asegurarse de que la señal es monofónica de 32 bits
+    if numchannels != 1 or bitspersample != 32:
+        raise ValueError("El archivo debe contener una señal monofónica de 32 bits")
+    
+    # Decodifica la señal separando en dos canales 
+    datosL= []
+    datosR= []
+    for i in range(0, len(data), 2):
+        dataSUMA = data[i]    
+        dataDIF = data[i + 1]       
+        sampleL = (dataSUMA + dataDIF) // 2
+        sampleR = (dataSUMA - dataDIF) // 2
+        datosL.append(sampleL)
+        datosR.append(sampleR)
+    DatosDec= []
+    for L,R in zip(datosL, datosR):         # combina los dos canales intercalando con el zip
+        DatosDec.append(L)
+        DatosDec.append(R)
+    
+    WriteWave(ficDec, numChannels=2, sampleRate=samplerate, bitsPerSample=bitspersample, data=DatosDec)
