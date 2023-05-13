@@ -29,41 +29,40 @@ def abreWave(fichero):
         buffer = fpwave.read(st.calcsize(subChunk2))
         subChunk2ID, subChunk2Size = st.unpack(subChunk2, buffer)
 
-        numMuestras = subChunk2Size // blockAlign
+        numMuestras = (subChunk2Size // blockAlign)
         datos = f'<{numMuestras}h'    
         buffer = fpwave.read(st.calcsize(datos))
         Datos = st.unpack(datos, buffer)
 
         return (chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
-        numChannels, sampleRate, byteRate,
-        blockAlign, BitsxSample, subChunk2ID, subChunk2ID, Datos)
+        numChannels, sampleRate, byteRate, blockAlign, 
+        BitsxSample, subChunk2ID, subChunk2Size, Datos)
     
     
-def creaCabecera(sampleRate, numCanales, bitsPerSample, duracionSeg):
+def creaCabeceraWAVE(sampleRate, numCanales, bitsPerSample, DataSize):
     # Cabecera de un fichero wave sin datos
-    cabeceraRIFF = b'RIFF'
-    tamanyoRIFF = 36 + int(sampleRate * numCanales * bitsPerSample/8 * duracionSeg)
-    cabeceraWAVE = b'WAVE'
-    cabeceraFMT = b'fmt '
-    tamanyoFMT = 16
-    tipoCompresion = 1
-    tamanyoBloque = numCanales * bitsPerSample // 8
-    tasaMuestreo = sampleRate
-    bytesPorSegundo = tasaMuestreo * tamanyoBloque
-    cabeceraDATA = b'data'
-    tamanyoDATA = int(sampleRate * numCanales * bitsPerSample/8 * duracionSeg)
+    chunkID = b'RIFF'
+    chunksize = 36 + DataSize
+    formatt = b'WAVE'
+    subChunkID = b'fmt '
+    subChunkSize = 16
+    audioFormat = 1
+    numChannels = numCanales
+    bytesPorSegundo = sampleRate * numCanales * (bitsPerSample // 8)
+    blockAlign = numCanales * (bitsPerSample // 8)
+    subChunk2ID = b'data'
     
     # Estructura de la cabecera del fichero wave
-    estructura = f'< 4s I 4s 4s I h h I I h h 4s I'.encode('ascii')
+    estructura = f'< 4s I 4s 4s I h h I I h h 4s I'
     
     # Empaquetamos los datos de la cabecera utilizando la estructura especificada
-    cabecera = st.pack(estructura, cabeceraRIFF, tamanyoRIFF, cabeceraWAVE, cabeceraFMT, 
-                           tamanyoFMT, tipoCompresion, numCanales, tasaMuestreo, bytesPorSegundo, 
-                           tamanyoBloque, bitsPerSample, cabeceraDATA, tamanyoDATA)
+    cabecera = st.pack(estructura, chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
+                                   numChannels, sampleRate, bytesPorSegundo,
+                                   blockAlign, bitsPerSample, subChunk2ID, DataSize)
+
     
     return cabecera
 
-    
 
 def estereo2mono(ficEste, ficMono, canal=2):
     """
@@ -71,8 +70,6 @@ def estereo2mono(ficEste, ficMono, canal=2):
     y escribe el fichero ficMono, con una señal monofónica. 
     El tipo concreto de señal que se almacenará en ficMono 
     depende del argumento canal
-
-
     """
     #utlilitzem la funció creada per extreue les dades del fitxer:
     (chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
@@ -80,19 +77,19 @@ def estereo2mono(ficEste, ficMono, canal=2):
         blockAlign, BitsxSample, subChunk2ID, subChunk2ID, mostres) = abreWave(ficEste)
 
     #dividim les mostres per Canal L i R i passem les mostres a binari
-    CanalL = mostres[0::2] 
-    CanalLBin = st.pack(f'{len(CanalL)}i', *CanalL)
+    CanalL = mostres[0::2]
+    CanalLBin = st.pack(f'{len(CanalL)}h', *CanalL) 
 
-    CanalR = mostres[1::2]
-    CanalRBin = st.pack(f'{len(CanalR)}i', *CanalR)
+    CanalR = mostres[1::2]  #mostres[2::4] + mostres [3::4]
+    CanalRBin = st.pack(f'{len(CanalR)}h', *CanalR)
 
     semiSuma = ((CanalL[i] + CanalR[i]) // 2 for i in range(len(CanalR))) 
-    semiSumaBin = st.pack(f'{len(CanalR)}i', *semiSuma)
+    semiSumaBin = st.pack(f'{len(CanalR)}h', *semiSuma)
 
     semiResta = ((CanalL[i] - CanalR[i]) // 2 for i in range(len(CanalR))) 
-    semiRestaBin = st.pack(f'{len(CanalR)}i', *semiResta)
+    semiRestaBin = st.pack(f'{len(CanalR)}h', *semiResta)
 
-    cabecera = creaCabecera(sampleRate*2, 1, BitsxSample, (len(mostres) // sampleRate*2))
+    cabecera = creaCabeceraWAVE(sampleRate, 1, BitsxSample, len(CanalLBin))     
 
     #Avaluem els diferents casos i ho posem al fitxer ficMono
     with open(ficMono, 'wb') as fout:
@@ -102,7 +99,6 @@ def estereo2mono(ficEste, ficMono, canal=2):
         if canal == 2: fout.write(semiSumaBin) 
         if canal == 3: fout.write(semiRestaBin)
 
-        
 
 def mono2estereo(ficIzq, ficDer, ficEste):
     """
@@ -112,5 +108,60 @@ def mono2estereo(ficIzq, ficDer, ficEste):
 
 
     """
+    #utlilitzem la funció creada per extreue les dades del fitxer:
+    (chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
+        numChannels, sampleRate, byteRate,
+        blockAlign, BitsxSample, subChunk2ID, subChunk2ID, mostresL) = abreWave(ficIzq)
+    
+    #utlilitzem la funció creada per extreue les dades del fitxer:
+    (chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
+        numChannels, sampleRate, byteRate,
+        blockAlign, BitsxSample, subChunk2ID, subChunk2ID, mostresR) = abreWave(ficDer)
+    
+    #Ajuntem les mostres com a L1, L2, R1, R2
+    
+    # mostres_stereo = []
+    # for i in range(len(mostresR)):
+    #     mostres_stereo.append(mostresL[i]) 
+    #     mostres_stereo.append(mostresR[i])
+
+    mostres_stereo = [valor for parell in zip(mostresL, mostresR) for valor in parell]
+
+    #Fem nova cabecera
+    cabecera = creaCabeceraWAVE(sampleRate, 2, BitsxSample, len(mostres_stereo))
+
+    #Creem i passem a bytes les mostres
+    with open(ficEste, 'wb') as fout: 
+        fout.write(cabecera)
+        fout.write(st.pack(f'{len(mostres_stereo)}h', *mostres_stereo))
+
+
+def codEstereo(ficEste, ficCod):
+    """Lee el fichero ficEste que contiene una señal estéreo codificada con PCM lineal de 16 bits, 
+    y construye con ellas una señal codificada con 32 bits que permita su reproducción 
+    tanto por sistemas monofónicos como por sistemas estéreo preparados para ello.
+    """
+
+        #utlilitzem la funció creada per extreue les dades del fitxer:
+    (chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
+        numChannels, sampleRate, byteRate,
+        blockAlign, BitsxSample, subChunk2ID, subChunk2ID, mostresSS) = abreWave(estereo2mono(ficEste, 'wav\mono2.wav', canal=2))
+    
+    #utlilitzem la funció creada per extreue les dades del fitxer:
+    (chunkID, chunksize, formatt, subChunkID, subChunkSize, audioFormat,
+        numChannels, sampleRate, byteRate,
+        blockAlign, BitsxSample, subChunk2ID, subChunk2ID, mostresSR) = abreWave(estereo2mono(ficEste, 'wav\mono3.wav', canal=2))
+
+    cabecera = creaCabeceraWAVE(sampleRate, 2, BitsxSample, len(mostresSS + mostresSR))
+
+
+    with open(ficCod, 'wb') as fout: 
+        fout.write(cabecera)
+
+        for i, j in mostresSS,  mostresSR:
+            fout.write(st.pack('h', i))
+            fout.write(st.pack('h', j))
+
+
 
 
