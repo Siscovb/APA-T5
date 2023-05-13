@@ -15,17 +15,12 @@ def estereo2mono (ficEste, ficMono, canal=2):
         subChunk2ID, subChunk2Size = st.unpack(cabecera, buffer)
 
         numMuestrasmono = 2*subChunk2Size // blockAlign #dividimos por dos ya que en cada bloque nos interesa dividir los datos de cada canal
-        print(numMuestrasmono)
         datos = f'<{numMuestrasmono}h' 
-        print(datos)
         buffer = ficEn.read(st.calcsize(datos))
         Datos = st.unpack(datos, buffer)
-        print (len(Datos))
     
         DatosL=Datos[0::4]
-        print(len(DatosL))
         DatosR=Datos[1::4]
-        print(len(DatosR))
         semisuma= [(dl+dr)//2 for  dl,dr in zip(DatosL,DatosR)]
         semiresta= [(dl-dr)//2 for dl,dr in zip(DatosL,DatosR)]
         
@@ -73,12 +68,9 @@ def mono2estereo(ficIzq, ficDer, ficEste):
         subChunk2ID, subChunk2Size = st.unpack(cabecera, buffer)
 
         numMuestras = 8*subChunk2Size//16
-        print(numMuestras)
         datosl = f'<{numMuestras}h' 
         buffer = izq.read(st.calcsize(datosl))
-        print(len(buffer))
         DatosL = st.unpack(datosl, buffer)
-        print(len(DatosL))
         
     #extraemos datos dicDer
     with open(ficDer, 'rb') as der:
@@ -95,12 +87,9 @@ def mono2estereo(ficIzq, ficDer, ficEste):
         subChunk2ID, subChunk2Size = st.unpack(cabecera, buffer)
 
         numMuestras =  8*subChunk2Size//16 
-        print(numMuestras)
         datosr = f'<{numMuestras}h' 
         buffer = der.read(st.calcsize(datos))
-        print(len(buffer))
         DatosR = st.unpack(datosr, buffer)
-        print(len(DatosR))
     
     #damos valores para crear cabecera nuevo archivo:
         bitsPerSampleE = 16
@@ -110,33 +99,76 @@ def mono2estereo(ficIzq, ficDer, ficEste):
         chunkSizeE = 36 + subChunk2sizeE
         byteRateE = sampleRateE * numChannelsE * bitsPerSampleE//8
         blockAlignE = numChannelsE * bitsPerSampleE//8
-
-
-
+    #Creamos la cabecera
     cabeceraOut = st.pack('4sI4s4sIhhIIhh4sI', chunkID, chunkSizeE, formatt, subChunkID, subChunkSize,
                             audioFormat, numChannelsE, sampleRateE, byteRateE, blockAlignE , bitsPerSampleE, subChunk2ID, subChunk2sizeE)
-    
-    
-   
-    est = bytearray()
+    #creamos la cadena de bits que contiene los datos L+R
+    bitesout = bytearray()
     for i in range(len(DatosR)):
-        est.extend(st.pack('h', DatosL[i]))
-        est.extend(st.pack('h', DatosR[i]))
-    print (len(est))
+        bitesout.extend(st.pack('h', DatosL[i]))
+        bitesout.extend(st.pack('h', DatosR[i]))
     
-    #i=0
-    #datosout=()
-    #while i < len(DatosR)+2:
-    #    datosout += DatosR[i:i+2] + DatosL[i:i+2]
-    #    i+=2
-    #print ("longitud datosOut" + len(datosout))
-    #binario = st.pack(f'{len(datosout)}i', *datosout)
-
     with open(ficEste, 'wb') as Fsal:
             Fsal.write(cabeceraOut)
-            Fsal.write(est)
+            Fsal.write(bitesout)
 
 
+
+def codEstereo(ficEste, ficCod):
+    with open(ficEste, 'rb') as ficEn:
+        cabecera = '<4sI4s'  
+        buffer = ficEn.read(st.calcsize(cabecera))
+        chunkIDin, chunksizein, formattin = st.unpack(cabecera, buffer)
+
+        formato = '<4sI2H2I2H'         
+        buffer = ficEn.read(st.calcsize(formato)) 
+        (subChunkIDin, subChunkSizein, audioFormatin,numChannelsin, sampleRatein, byteRatein,blockAlignin, BitsxSamplein) = st.unpack(formato, buffer)
+
+        cabecera = '<4sI'         
+        buffer = ficEn.read(st.calcsize(cabecera))
+        subChunk2IDin, subChunk2Sizein = st.unpack(cabecera, buffer)
+
+        numMuestrasin = 2 * subChunk2Sizein // blockAlignin
+        datos = f'<{numMuestrasin}B' 
+        buffer = ficEn.read(st.calcsize(datos))
+        Datos = st.unpack(datos, buffer)
+    print('Longitud datos=')
+    print(len(Datos))
+   
+    #DatosL=Datos[0::2]
+    #DatosR=Datos[1::2]
+    #print('Longitud datos l=')
+    #print(len(DatosL))
+    #print('Longitud datosr=')
+    #print(len(DatosR))
+    #semisuma= [(dl+dr)//2 for  dl,dr in zip(DatosL,DatosR)]
+    #semiresta= [(dl-dr)//2 for dl,dr in zip(DatosL,DatosR)]
+
+    #print('Longitud semisuma=')
+    #print(len(semisuma))
+    bitesout = bytearray()
+    for i in range(len(Datos)-4):
+        bitesout.extend(st.pack('BBBB', (int(Datos[i])+int(Datos[i+3]))//2, (int(Datos[i+1])+int(Datos[i+4]))//2, (int(Datos[i])-int(Datos[i+3]))//2, (int(Datos[i+1])-int(Datos[i+4]))//2))
+    print('Longitud salida=')
+    print(len(bitesout))
+
+    #damos valores para crear cabecera nuevo archivo:
+    numeroMuestras = len(bitesout)
+    bitsPerSampleC = 32
+    subChunk1SizeC = 16
+    sampleRateC = 16000
+    numChannelsC = 2
+    subChunk2sizeC = (numeroMuestras * 2 * (bitsPerSampleC//8))
+    chunkSizeC = 4 + (8 + subChunk1SizeC) + (8 + subChunk2sizeC)
+    byteRateC = sampleRateC * numChannelsC * bitsPerSampleC//8
+    blockAlignC = numChannelsC * bitsPerSampleC//8
+
+    cabeceraOut = st.pack('4sI4s4sIhhIIhh4sI', chunkIDin, chunkSizeC, formattin, subChunkIDin, subChunkSizein,
+                            audioFormatin, numChannelsC, sampleRateC, byteRateC, blockAlignC , bitsPerSampleC, subChunk2IDin, subChunk2sizeC)
+
+    with open(ficCod, 'wb') as Fsal:
+            Fsal.write(cabeceraOut)
+            Fsal.write(bitesout)
 
     
 
