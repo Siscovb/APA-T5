@@ -46,11 +46,11 @@ def abreWave(fichero):
         buffer = fwave.read(st.calcsize(header))
         data = st.unpack(_format, buffer)
 
-        return (chunkID, chunkSize, _format, subChunkID, subChunkSize, audioFormat, numChannels, sampleRate, byteRate, blockAlign, BitsxSample, subChunk2ID, subChunk2Size, data)
+        return (numChannels, sampleRate,  bitsXsample, data)
 
-def write_wave(fichero, data, numChannels=2, sampleRate=44100, bitsXsample=16):
+def creaWave(fichero, data, numChannels=2, sampleRate=44100, bitsXsample=16):
     """
-    Escribe el contenido de la variable data en un fichero WAVE
+    Escribe el contenido de la variable data en un fichero WAVE despues de crear las cabeceras de los chunks
     """
     numSamples = len(data)
     fmtChunkSize = 16
@@ -72,7 +72,38 @@ def write_wave(fichero, data, numChannels=2, sampleRate=44100, bitsXsample=16):
             fwave.write(st.pack(f'<{numChannels}h', *sample))
 
 def estereo2mono(ficEste, ficMono, canal=2):
-    pass
+    '''
+    La función lee el fichero ficEste, que debe contener una señal estéreo,
+    y escribe el fichero ficMono, con una señal monofónica.
+    El tipo concreto de señal que se almacenará en ficMono depende del argumento canal:
+    
+    canal=0: Se almacena el canal izquierdo LL.
+    canal=1: Se almacena el canal derecho RR.
+    canal=2: Se almacena la semisuma (L+R)/2(L+R)/2. Es la opción por defecto.
+    canal=3: Se almacena la semidiferencia (L-R)/2(L−R)/2.
+    '''
+    (numChannels, sampleRate,  bitsXsample, data) = abreWave(ficEste)
+
+    if numChannels != 2:
+        raise ValueError('ERROR: El archivo de entrada no es estéreo')
+
+    if canal == 0:
+        # Canal izquierdo
+        monoData = [(sample[0],) for sample in data]
+    elif canal == 1:
+        # Canal derecho
+        monoData = [(sample[1],) for sample in data]
+    elif canal == 2:
+        # Semisuma (L+R)/2
+        monoData = [((sample[0] + sample[1])//2,) for sample in data]
+    elif canal == 3:
+        # Semidiferencia (L-R)/2
+        monoData = [((sample[0] - sample[1])//2,) for sample in data]
+    else:
+        raise ValueError('ERROR: valor de canal no válido')
+
+    creaWave(ficMono, monoData, numChannels=1, sampleRate=sampleRate, bitsXsample=bitsXsample)
+
 
 def mono2estereo(ficIzq, ficDer, ficEste):
     pass
