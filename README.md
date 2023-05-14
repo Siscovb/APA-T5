@@ -262,6 +262,7 @@ def codEstereo(ficEste, ficCod):
 
     escribirWave(ficCod, numChannels=1, SampleRate=sampleRate, BitsPerSample=32, data=dataCod)
 
+
 ```
 ##### Código de `decEstereo()`
 ```python
@@ -271,26 +272,26 @@ def decEstereo(ficCod, ficDec):
     contienen la semisuma de los dos canales de una señal estéreo y los 16 bits menos significativos la semidiferencia,
     y escribe el fichero \python{ficEste} con los dos canales por separado en el formato de los ficheros WAVE estéreo.
     """
-    
-    numChannels, sampleRate, bitsPerSample, data = leerWave(ficCod)
-    dataL = []
-    dataR = []
 
-    for i in range(0, len(data), 2):
-        dataSUMA = data[i]
+    numChannels, sampleRate, bitsPerSample, data = leerWave(ficCod)
+    dataL, dataR = [], []
+
+    for i in data:
+        dataSUM = data[i]
         dataDIF = data[i + 1]
-        L = (dataSUMA + dataDIF) // 2
-        R = (dataSUMA - dataDIF) // 2
+        L = (dataSUM + dataDIF) 
+        R = (dataSUM * 2) - L
         dataL.append(L)
         dataR.append(R)
 
-    DataFULL = []
+    DataFULL = [data for pair in zip(dataL, dataR) for data in pair]
 
     for l, r in zip(dataL, dataR):
         DataFULL.append(l)
         DataFULL.append(r)
 
     escribirWave(ficDec, numChannels=2, SampleRate=sampleRate, BitsPerSample=16, data=DataFULL)
+
 ```
 
 #### Verificacion funciones
