@@ -146,7 +146,53 @@ def mono2estereo(ficIzq, ficDer, ficEste):
 
 
 def codEstereo(ficEste, ficCod):
-    pass
+    """
+    Lee el fichero ficEste, que contiene una señal estéreo codificada con
+    PCM lineal de 16 bits, y construye con ellas una señal codificada con 32 bits
+    que permita su reproducción tanto por sistemas 
+    monofónicos como por sistemas estéreo preparados para ello.
 
-def decEstereo(ficCod, ficEste):
-    pass
+    """
+    (numChannels, sampleRate,  bitsXsample, data) = abreWave(ficEste)
+    
+    data32 = []
+    
+    for i in range(0, len(data), 2):         
+        dataLeft = data[i]                         
+        dataRight = data[i + 1]                    
+        dataSsuma = (dataLeft + dataRight) // 2    
+        dataSresta = (dataLeft - dataRight) // 2  
+        data32.append(dataSsuma)
+        data32.append(dataSresta)
+    
+    creaWave(ficCod, numChannels=1, sampleRate=sampleRate, bitXsample=32, data=data32)
+
+
+def decEstereo(ficCod, ficDec):
+    """
+    Lee el fichero ficCod con una señal monofónica de 32 bits en la que 
+    los 16 bits más significativos contienen la semisuma de los dos canales 
+    de una señal estéreo y los 16 bits menos significativos la semidiferencia, 
+    y escribe el fichero ficEste con los dos canales por separado en el formato de los ficheros WAVE estéreo.
+    """
+    (numChannels, sampleRate,  bitsXsample, data) = abreWave(ficCod)
+    
+    # Control de errores (tiene que ser una señal monofonica de 32 bits)
+    if numChannels != 1 or bitsXsample != 32:
+        raise ValueError("ERROR: expected (32 bits monophonic signal)")
+    
+    datosLeft= []
+    datosRight= []
+    for i in range(0, len(data), 2):
+        dataSsuma = data[i]    
+        dataSresta = data[i + 1]       
+        sampleLeft = (dataSsuma + dataSresta) // 2
+        sampleRight = (dataSsuma - dataSresta) // 2
+        datosLeft.append(sampleLeft)
+        datosRight.append(sampleRight)
+    dataLR= []
+    for left, right in zip(datosLeft, datosRight):    
+        dataLR.append(left)
+        dataLR.append(right)
+    
+    creaWave(ficDec, numChannels=2, sampleRate=sampleRate, bitsXsample=bitsXsample, data=dataLR)
