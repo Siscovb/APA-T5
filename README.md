@@ -210,18 +210,22 @@ def estereo2mono(ficEste, ficMono, canal=2):
     data += (0, )
 
     if canal == 0:
-        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate, BitsPerSample=BitPerSample, data=data[0::2])
-
+        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate,
+                 BitsPerSample=BitPerSample, data=data[::2])
     elif canal == 1:
-        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate, BitsPerSample=BitPerSample, data=data[1::2])
-
+        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate,
+                 BitsPerSample=BitPerSample, data=data[1::2])
     elif canal == 2:
-        dataLR = ((dataL + dataR) // 2 for dataL, dataR in zip(data[::2], data[1::2]))
-        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate, BitsPerSample=BitPerSample, data=list(dataLR))
-
+        dataLR = ((dataL + dataR) // 2
+                  for dataL, dataR in zip(data[::2], data[1::2]))
+        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate,
+                 BitsPerSample=BitPerSample, data=list(dataLR))
     elif canal == 3:
-        dataLR = ((dataL - dataR) // 2 for dataL, dataR in zip(data[::2], data[1::2]))
-        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate, BitsPerSample=BitPerSample, data=list(dataLR))
+        dataLR = ((dataL - dataR) // 2
+                  for dataL, dataR in zip(data[::2], data[1::2]))
+        escribirWave(ficMono, numChannels=1, SampleRate=SampleRate,
+                 BitsPerSample=BitPerSample, data=list(dataLR))
+
 
 ```
 ##### Código de `mono2estereo()`
