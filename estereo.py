@@ -106,7 +106,44 @@ def estereo2mono(ficEste, ficMono, canal=2):
 
 
 def mono2estereo(ficIzq, ficDer, ficEste):
-    pass
+    '''
+    Lee los ficheros ficIzq y ficDer, que contienen las señales monofónicas 
+    correspondientes a los canales izquierdo y derecho, respectivamente,
+    y construye con ellas una señal estéreo que almacena en el fichero ficEste.
+    '''
+
+    with open(ficIzq, 'rb') as f1, open(ficDer, 'rb') as f2:
+        dataIzq = f1.read() 
+        dataDer = f2.read() 
+
+    # Calcular la longitud de los datos de audio
+    lenData = min(len(dataIzq), len(dataDer))
+    
+    with open(ficEste, 'wb') as fwave:
+        # Cabecera:
+        fwave.write(st.pack('<4sI4s', b'RIFF', 36 + lenData, b'WAVE'))
+        # 36 --> Chunk Size
+
+        # Chunk fmt
+        fwave.write(st.pack('<4sIHHIIHH', b'fmt ', 16, 1, 2, 44100, 176400, 4, 16))
+        # 16 --> Subchunk size
+        # 1 --> Audio Format  (PCM)
+        # 2 --> num Channels
+        # 44100 --> Sample Rate
+        # 176400 --> Byte Rate
+        # 4 --> Block Align
+        # 16 --> Bits x Sample
+        
+        # Chunk Data
+        fwave.write(st.pack('<4sI', b'data', lenData))
+
+        # Combinar los datos de audio de los dos canales en uno solo
+        for i in range(0, lenData, 2):
+            sample1 = st.unpack('<h', dataIzq[i:i+2])[0]
+            sample2 = st.unpack('<h', dataDer[i:i+2])[0]
+            sample = st.pack('<hh', sample1, sample2)
+            fwave.write(sample)
+
 
 def codEstereo(ficEste, ficCod):
     pass
