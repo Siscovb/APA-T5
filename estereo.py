@@ -22,8 +22,8 @@ def abreWave(fichero):
         
         cabecera = '<4sI4s'  
         buffer = fwave.read(st.calcsize(cabecera))
-        chunkID, chunkSize, _format = st.unpack(cabecera, buffer)
-        if chunkID != b'RIFF' or _format != b'WAVE':
+        chunkID, chunkSize, fformat = st.unpack(cabecera, buffer)
+        if chunkID != b'RIFF' or fformat != b'WAVE':
             raise Exception('El fichero NO es  WAVE') from None  
         
         fmtChunck = '<4sI2H2I2H'         
@@ -35,7 +35,7 @@ def abreWave(fichero):
         subChunk2ID, subChunk2Size = st.unpack(dataChunck, buffer)
 
         nMuestras = subChunk2Size / blockAlign
-        _format = f'<{nMuestras}h'    
+        fformat = f'<{nMuestras}h'    
         
         # Diferenciamos de Estereo o Mono:
         if numChannels == 1:
@@ -44,7 +44,7 @@ def abreWave(fichero):
             header = '<' + str(nMuestras*2) + nBits(bitsXsample)
             
         buffer = fwave.read(st.calcsize(header))
-        data = st.unpack(_format, buffer)
+        data = st.unpack(fformat, buffer)
 
         return (numChannels, sampleRate,  bitsXsample, data)
 
@@ -196,3 +196,4 @@ def decEstereo(ficCod, ficDec):
         dataLR.append(right)
     
     creaWave(ficDec, numChannels=2, sampleRate=sampleRate, bitsXsample=bitsXsample, data=dataLR)
+    
