@@ -1,3 +1,5 @@
+#! /usr/bin/python3
+
 """
     Quinta tarea : Sonido estéreo y ficheros WAVE
 
@@ -146,5 +148,4 @@ def decEstereo(ficCod, ficDec):
         DataALL.append(l)
         DataALL.append(r)
     escrWave(ficDec, numChannels=2, SampleRate=sampleRate, BitsPerSample=16, data=DataALL)
-
 
