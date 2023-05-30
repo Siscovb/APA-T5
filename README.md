@@ -1,6 +1,6 @@
 # Sonido estéreo y ficheros WAVE
 
-## Nom i cognoms
+## Nom i cognoms: Johny Silva Mendes
 
 ## El formato WAVE
 
@@ -187,13 +187,133 @@ para que se realice el realce sintáctico en Python del mismo (no vale insertar 
 pantalla, debe hacerse en formato *markdown*).
 
 ##### Código de `estereo2mono()`
+```c
+def estereo2mono(ficEste, ficMono, canal=2):
+    """
+    Lee el fichero ficEste, que debe contener una señal estéreo, y escribe el fichero ficMono, con una señal monofónica.
+    El tipo concreto de señal que se almacenará en ficMono depende del argumento canal:
+    canal=0: Se almacena el canal izquierdo (L)
+    canal=1: Se almacena el canal derecho (R)
+    canal=2: Se almacena la semisuma [(L+R)/2] esta es la opcion por defecto
+    canal=3: Se almacena la semidiferencia [(L-R)/2]
+    """
+    # Leer la señal estéreo y la frecuencia de muestreo del archivo de entrada
+    senyal, sampleRate = abrewave(ficEste)
+    
+    if canal == 0:
+        # Almacenar el canal izquierdo L en el archivo de salida
+        writeWave(ficMono, [senyal[0]], sampleRate)
+    elif canal == 1:
+        # Almacenar el canal derecho R en el archivo de salida
+        writeWave(ficMono, [senyal[1]], sampleRate)
+    elif canal == 2:
+        # Calcular la semisuma (L+R)/2 y almacenarla en el archivo de salida
+        semisuma = [(v1 + v2) // 2 for v1, v2 in zip(senyal[0], senyal[1])]
+        writeWave(ficMono, [semisuma], sampleRate)
+    elif canal == 3:
+        # Calcular la semidiferencia (L-R)/2 y almacenarla en el archivo de salida
+        semidiferencia = [(v1 - v2) // 2 for v1, v2 in zip(senyal[0], senyal[1])]
+        writeWave(ficMono, [semidiferencia], sampleRate)
+
+```        
 
 ##### Código de `mono2estereo()`
-
+```c
+def mono2estereo(ficIzq, ficDer, ficEste):      
+    '''
+    Lee los ficheros ficIzq y ficDer, que contienen las señales monofónicas correspondientes a los canales
+    izquierdo y derecho, respectivamente, y construye con ellas una señal estéreo que almacena en el fichero
+    ficEste.
+    '''
+    # Leer la señal y la frecuencia de muestreo del canal izquierdo del archivo de entrada
+    signalIzq, sampleRate = abrewave(ficIzq)
+    # Leer la señal y la frecuencia de muestreo del canal derecho del archivo de entrada
+    signalDer, sampleRate = abrewave(ficDer)
+    # Concatenar las señales de ambos canales y almacenar la señal estéreo resultante en el archivo de salida
+    writeWave(ficEste, [*signalIzq, *signalDer], sampleRate)
+```
 ##### Código de `codEstereo()`
+```c
+def codEstereo(ficEste, ficCod):
+    """
+    Lee el fichero `ficEste`, que contiene una señal estéreo codificada con PCM lineal de 16 bits,
+    y construye con ellas una señal codificada con 32 bits que permita su reproducción tanto por sistemas 
+    monofónicos como por sistemas estéreo preparados para ello.
 
+    """
+    # Leer la señal estéreo y la frecuencia de muestreo del archivo de entrada
+    senyal, sampleRate = abrewave(ficEste)
+    
+    with open(ficCod, 'wb') as fpWave:
+        # Calcular el tamaño del chunk del archivo de salida
+        chunkSize = 44 + 32 // 8 * len(senyal[0]) + 32 // 8 * (len(senyal[1]) if len(senyal) > 1 else 0)
+        fmtRiff = '<4sI4s'
+        fpWave.write(struct.pack(fmtRiff, b'RIFF', chunkSize, b'WAVE'))
+        
+        fmtCap = '<4sI2H2I2H'
+        # Escribir la subcabecera del formato del archivo de salida
+        fpWave.write(struct.pack(fmtCap, b'fmt ', 16, 1, 1, sampleRate, 32 // 8 * sampleRate * 1, 1 * 32 // 8, 32)) #1:audioformat fmlineal
+        
+        fmtData = '<4sI'
+        numMuestras = len(senyal[0]) + (len(senyal[1]) if len(senyal) > 1 else 0)
+        # Escribir la subcabecera de los datos de audio del archivo de salida
+        fpWave.write(struct.pack(fmtData, b'data', 32 // 8 * numMuestras))
+        
+        fmtSen = '<' + str(numMuestras) + 'h'
+        
+        # Calcular la semisuma y la semidiferencia de los canales estéreo
+        semisuma = [(v1 + v2) // 2 for v1, v2 in zip(senyal[0], senyal[1])]
+        semidiferencia = [(v1 - v2) // 2 for v1, v2 in zip(senyal[0], senyal[1])]
+        
+        # Concatenar de las muestras de semisuma y semidiferencia en una única lista
+        sen = [None] * (len(semisuma) + len(semidiferencia))
+        sen[::2] = semisuma
+        sen[1::2] = semidiferencia
+        
+        # Escribir los datos de audio en el archivo de salida
+        fpWave.write(struct.pack(fmtSen, *sen))
+```
 ##### Código de `decEstereo()`
-
+```c
+def decEstereo(ficCod, ficEste):
+    '''
+    Lee el fichero \python{ficCod} con una señal monofónica de 32 bits en la que los 16 bits más significativos
+    contienen la semisuma de los dos canales de una señal estéreo y los 16 bits menos significativos la
+    semidiferencia, y escribe el fichero \python{ficEste} con los dos canales por separado en el formato de los
+    ficheros WAVE estéreo.
+    '''    
+    # Leer la señal monofónica y la frecuencia de muestreo del archivo de entrada
+    senyal, sampleRate = abrewave(ficCod)
+    
+    with open(ficEste, 'wb') as fpWave:
+        # Calcular el tamaño del chunk del archivo de salida
+        chunkSize = 44 + 2 * len(senyal[0]) + 2 * (len(senyal[1]) if len(senyal) > 1 else 0)
+        fmtRiff = '<4sI4s'
+        fpWave.write(struct.pack(fmtRiff, b'RIFF', chunkSize, b'WAVE'))
+        
+        fmtCap = '<4sI2H2I2H'
+        # Escribir la subcabecera del formato del archivo de salida
+        fpWave.write(struct.pack(fmtCap, b'fmt ', 16, 1, 2, sampleRate, 16 // 8 * sampleRate * 2, 2 * 16 // 8, 16)) #1:audioformat fmlineal
+        
+        fmtData = '<4sI'
+        numMuestras = len(senyal[0]) + (len(senyal[1]) if len(senyal) > 1 else 0)
+        # Escribir la subcabecera de los datos de audio del archivo de salida
+        fpWave.write(struct.pack(fmtData, b'data', 2 * numMuestras))
+                       
+        fmtSen = '<' + str(numMuestras) + 'h'
+        
+        # Extraer la semisuma y la semidiferencia de la señal de entrada
+        semisuma = senyal[0][::2]
+        semidiferencia = senyal[0][1::2]
+        
+        # Calcular los canales izquierdo y derecho de la señal estéreo de salida
+        sen = [None] * (len(semisuma) + len(semidiferencia))
+        sen[::2] = [v1 + v2 for v1, v2 in zip(semisuma, semidiferencia)]
+        sen[1::2] = [v1 - v2 for v1, v2 in zip(semisuma, semidiferencia)]
+        
+        # Escribir los datos de audio en el archivo de salida
+        fpWave.write(struct.pack(fmtSen, *sen))
+```
 #### Subida del resultado al repositorio GitHub y *pull-request*
 
 La entrega se formalizará mediante *pull request* al repositorio de la tarea.
