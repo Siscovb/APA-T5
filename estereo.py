@@ -1,5 +1,16 @@
 import struct as st
 def estereo2mono (ficEste, ficMono, canal=2):
+    """
+    La función lee el fichero `ficEste`, que debe contener una señal estéreo, 
+    y escribe el fichero `ficMono`, con una señal monofónica. 
+    El tipo concreto de señal que se almacenará en `ficMono` depende del argumento `canal`:
+
+- `canal=0`: Se almacena el canal izquierdo $L$.
+- `canal=1`: Se almacena el canal derecho $R$.
+- `canal=2`: Se almacena la semisuma $(L+R)/2$. Es la opción por defecto.
+- `canal=3`: Se almacena la semidiferencia $(L-R)/2$.
+
+    """
 
     with open(ficEste, 'rb') as ficEn:
         cabecera = '<4sI4s'  
@@ -53,6 +64,12 @@ def estereo2mono (ficEste, ficMono, canal=2):
                 Fsal.write(binario)
 
 def mono2estereo(ficIzq, ficDer, ficEste):
+    """
+    Lee los ficheros ficIzq y ficDer, que contienen las señales monofónicas correspondientes
+    a los canales izquierdo y derecho, respectivamente, y construye con ellas una señal estéreo 
+    que almacena en el fichero ficEste.
+
+    """
     #extraemos datos dicIzq
     with open(ficIzq, 'rb') as izq:
         cabecera = '<4sI4s'  
@@ -115,6 +132,14 @@ def mono2estereo(ficIzq, ficDer, ficEste):
 
 
 def codEstereo(ficEste, ficCod):
+    """
+    Lee el fichero \python{ficEste}, que contiene una señal estéreo codificada con PCM 
+    lineal de 16 bits, y construye con ellas una señal codificada con 32 bits que permita 
+    su reproducción tanto por sistemas monofónicos como por sistemas
+    estéreo preparados para ello.
+
+    """
+    
     with open(ficEste, 'rb') as ficEn:
         cabecera = '<4sI4s'  
         buffer = ficEn.read(st.calcsize(cabecera))
@@ -128,30 +153,82 @@ def codEstereo(ficEste, ficCod):
         buffer = ficEn.read(st.calcsize(cabecera))
         subChunk2IDin, subChunk2Sizein = st.unpack(cabecera, buffer)
 
-        numMuestrasin =  subChunk2Sizein // blockAlignin
-        datos = f'<{numMuestrasin}h' 
+        numMuestrasin = subChunk2Sizein // blockAlignin
+        datos = f'<{numMuestrasin*2}h' 
         buffer = ficEn.read(st.calcsize(datos))
         Datos = st.unpack(datos, buffer)
     print('Longitud datos=')
     print(len(Datos))
    
-    #DatosL=Datos[0::2]
-    #DatosR=Datos[1::2]
-    #print('Longitud datos l=')
-    #print(len(DatosL))
-    
+   
     bitesout = bytearray()
-    for i in range(len(Datos)-1):
-        bitesout.extend(st.pack('<hh', (int(Datos[i])+int(Datos[i+1]))//2, (int(Datos[i])-int(Datos[i+1]))//2))
+    for i in range(0,len(Datos)-1,2):
+        suma = (Datos[i] + Datos[i+1])//2
+        resta = (Datos[i] - Datos[i+1])//2
+        bitesout.extend(st.pack('<hh', suma, resta))
+        
     print('Longitud salida=')
     print(len(bitesout))
-
     #damos valores para crear cabecera nuevo archivo:
     numeroMuestras = len(bitesout)
-    bitsPerSampleC = 32
+    bitsPerSampleC = 16
     subChunk1SizeC = 16
     sampleRateC = 16000
-    numChannelsC = 1
+    numChannelsC = 2
+    subChunk2sizeC = (numeroMuestras * numChannelsC * (bitsPerSampleC//8))
+    chunkSizeC = 4 + (8 + subChunk1SizeC) + (8 + subChunk2sizeC)
+    byteRateC = sampleRateC * numChannelsC * bitsPerSampleC//8
+    blockAlignC = numChannelsC * bitsPerSampleC//8
+
+    cabeceraOut = st.pack('4sI4s4sIHHIIHH4sI', chunkIDin, chunkSizeC, formattin, subChunkIDin, subChunkSizein,
+                            audioFormatin, numChannelsC, sampleRateC, byteRateC, blockAlignC , bitsPerSampleC, subChunk2IDin, subChunk2sizeC)
+
+    with open(ficCod, 'wb') as Fsal:
+            Fsal.write(cabeceraOut)
+            Fsal.write(bitesout)
+
+
+def decEstereo(ficCod, ficDec):
+    """
+    Lee el fichero \python{ficCod} con una señal monofónica de 32 bits en la que
+    los 16 bits más significativos contienen la semisuma de los dos canales de una señal estéreo
+    y los 16 bits menos significativos la semidiferencia, y escribe el fichero \python{ficEste} 
+    con los dos canales por separado en el formato de los ficheros WAVE estéreo.
+    """
+
+    with open(ficCod, 'rb') as ficEn:
+        cabecera = '<4sI4s'  
+        buffer = ficEn.read(st.calcsize(cabecera))
+        chunkIDin, chunksizein, formattin = st.unpack(cabecera, buffer)
+
+        formato = '<4sI2H2I2H'         
+        buffer = ficEn.read(st.calcsize(formato)) 
+        (subChunkIDin, subChunkSizein, audioFormatin,numChannelsin, sampleRatein, byteRatein,blockAlignin, BitsxSamplein) = st.unpack(formato, buffer)
+
+        cabecera = '<4sI'         
+        buffer = ficEn.read(st.calcsize(cabecera))
+        subChunk2IDin, subChunk2Sizein = st.unpack(cabecera, buffer)
+
+        numMuestrasin = subChunk2Sizein // blockAlignin
+        datos = f'<{numMuestrasin}i' 
+        bufferx = ficEn.read(st.calcsize(datos))
+        print(len(bufferx))
+        Datos = st.unpack(datos, bufferx)
+    print('Longitud datos=')
+    print(len(Datos))
+    bitesout = bytearray()
+    for i in Datos:
+        suma = Datos[i]
+        resta = Datos[i+1]
+        L = suma + resta
+        R = resta - suma
+        bitesout.extend(st.pack('>h', L))
+        bitesout.extend(st.pack('>h', R))
+    numeroMuestras = len(bitesout)
+    bitsPerSampleC = 16
+    subChunk1SizeC = 16
+    sampleRateC = 16000
+    numChannelsC = 2
     subChunk2sizeC = (numeroMuestras * numChannelsC * (bitsPerSampleC//8))
     chunkSizeC = 4 + (8 + subChunk1SizeC) + (8 + subChunk2sizeC)
     byteRateC = sampleRateC * numChannelsC * bitsPerSampleC//8
@@ -160,9 +237,14 @@ def codEstereo(ficEste, ficCod):
     cabeceraOut = st.pack('4sI4s4sIhhIIhh4sI', chunkIDin, chunkSizeC, formattin, subChunkIDin, subChunkSizein,
                             audioFormatin, numChannelsC, sampleRateC, byteRateC, blockAlignC , bitsPerSampleC, subChunk2IDin, subChunk2sizeC)
 
-    with open(ficCod, 'wb') as Fsal:
+    with open(ficDec, 'wb') as Fsal:
             Fsal.write(cabeceraOut)
             Fsal.write(bitesout)
+
+
+
+
+
 
     
 
